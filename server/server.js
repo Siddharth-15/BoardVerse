@@ -243,6 +243,28 @@ app.put('/api/sessions/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// Diagnostics endpoint to debug directory layouts in production
+app.get('/api/debug', (req, res) => {
+  const fs = require('fs');
+  const path = require('path');
+  const dPath = path.join(__dirname, '../dist');
+  
+  const rootFiles = fs.readdirSync(path.join(__dirname, '..'));
+  let distExists = fs.existsSync(dPath);
+  let distFiles = [];
+  if (distExists) {
+    distFiles = fs.readdirSync(dPath);
+  }
+
+  res.json({
+    dirname: __dirname,
+    distPath: dPath,
+    distExists,
+    distFiles,
+    rootFiles
+  });
+});
+
 // --- SOCKET.IO REALTIME EVENTS ---
 
 // Track active users globally
