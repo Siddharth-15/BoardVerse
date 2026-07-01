@@ -142,17 +142,26 @@ function setupAuthListeners() {
     }
   });
 
-  btnGuest.addEventListener('click', () => {
-    // Guest pseudonym generator
-    const randNum = Math.floor(1000 + Math.random() * 9000);
-    const guestName = `Guest-${randNum}`;
-    
-    api.setGuestProfile(guestName);
-    localStorage.setItem('boardverse_username', guestName);
-    
-    showToast(`Logged in as guest: ${guestName}`, 'success');
-    showView('dashboard');
-    loadDashboardData();
+  btnGuest.addEventListener('click', async () => {
+    try {
+      btnGuest.disabled = true;
+      btnGuest.textContent = 'Connecting...';
+      
+      const randNum = Math.floor(1000 + Math.random() * 9000);
+      const guestName = `Guest-${randNum}`;
+      
+      await api.loginAsGuest(guestName);
+      localStorage.setItem('boardverse_username', guestName);
+      
+      showToast(`Logged in as guest: ${guestName}`, 'success');
+      showView('dashboard');
+      loadDashboardData();
+    } catch (err) {
+      showToast('Failed to join as guest: ' + err.message, 'error');
+    } finally {
+      btnGuest.disabled = false;
+      btnGuest.textContent = 'Join as Guest';
+    }
   });
 
   btnLogout.addEventListener('click', () => {

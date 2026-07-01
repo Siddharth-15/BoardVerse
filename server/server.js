@@ -97,6 +97,22 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+// Guest Sign-in Token Provider
+app.post('/api/auth/guest', (req, res) => {
+  const { username } = req.body;
+  if (!username) return res.status(400).json({ error: 'Username is required' });
+
+  const guestId = 'guest_' + Math.random().toString(36).substring(2, 9);
+  const token = jwt.sign(
+    { userId: guestId, username: username.trim(), isGuest: true },
+    JWT_SECRET,
+    { expiresIn: '1d' } // Guest tokens expire in 24 hours
+  );
+
+  res.json({ token, username: username.trim(), userId: guestId });
+});
+
+
 // Get Current User Profile
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
   try {
@@ -396,6 +412,21 @@ io.on('connection', (socket) => {
       
       // Notify details
       io.to(sId).emit('user-left', { userId });
+    }
+  });
+});
+
+// Serve production Vite build statically
+const path = require('path');
+const distPath = path.join(__dirname, '../dist');
+app.use(express.static(distPath));
+
+// SPA fallback routing
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api')) return next();
+  res.sendFile(path.join(distPath, 'index.html'), (err) => {
+    if (err) {
+      res.status(200).send('BoardVerse API Server is active.');
     }
   });
 });

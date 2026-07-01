@@ -1,7 +1,16 @@
-// BoardVerse API service wrapper
-
 // Default server URL. Can be overwritten in UI Settings and saved in localStorage.
-let BASE_URL = localStorage.getItem('boardverse_server_url') || 'http://localhost:3000';
+const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+let BASE_URL = localStorage.getItem('boardverse_server_url');
+
+if (!BASE_URL) {
+  // If running local dev server (Vite on port 5173), point to backend at 3000
+  if (isLocal && window.location.port === '5173') {
+    BASE_URL = 'http://localhost:3000';
+  } else {
+    // In production (same origin) or local preview
+    BASE_URL = window.location.origin;
+  }
+}
 
 export function getServerUrl() {
   return BASE_URL;
@@ -26,31 +35,8 @@ export function getToken() {
   return localStorage.getItem('boardverse_jwt_token');
 }
 
-// Manage guest profile states locally
-export function setGuestProfile(username) {
-  if (username) {
-    localStorage.setItem('boardverse_guest_username', username);
-    localStorage.setItem('boardverse_guest_userid', 'guest_' + Math.random().toString(36).substring(2, 9));
-  } else {
-    localStorage.removeItem('boardverse_guest_username');
-    localStorage.removeItem('boardverse_guest_userid');
-  }
-}
-
-export function getGuestProfile() {
-  const username = localStorage.getItem('boardverse_guest_username');
-  const userId = localStorage.getItem('boardverse_guest_userid');
-  if (username && userId) {
-    return { username, userId, isGuest: true };
-  }
-  return null;
-}
-
 // User details helper
 export function getUserInfo() {
-  const guest = getGuestProfile();
-  if (guest) return guest;
-
   const token = getToken();
   if (!token) return null;
 
@@ -68,7 +54,7 @@ export function getUserInfo() {
     return {
       userId: payload.userId,
       username: payload.username,
-      isGuest: false
+      isGuest: !!payload.isGuest
     };
   } catch (err) {
     console.error('Error decoding auth token:', err);
@@ -78,7 +64,6 @@ export function getUserInfo() {
 
 export function logout() {
   setToken(null);
-  setGuestProfile(null);
 }
 
 // Generic fetch wrapper with Authorization header
@@ -111,7 +96,6 @@ export async function register(username, password) {
     method: 'POST',
     body: JSON.stringify({ username, password })
   });
-  setGuestProfile(null); // Clear guest status
   setToken(data.token);
   return data;
 }
@@ -121,7 +105,15 @@ export async function login(username, password) {
     method: 'POST',
     body: JSON.stringify({ username, password })
   });
-  setGuestProfile(null); // Clear guest status
+  setToken(data.token);
+  return data;
+}
+
+export async function loginAsGuest(username) {
+  const data = await request('/api/auth/guest', {
+    method: 'POST',
+    body: JSON.stringify({ username })
+  });
   setToken(data.token);
   return data;
 }
