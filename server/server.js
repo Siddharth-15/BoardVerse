@@ -252,8 +252,14 @@ app.get('/api/debug', (req, res) => {
   const rootFiles = fs.readdirSync(path.join(__dirname, '..'));
   let distExists = fs.existsSync(dPath);
   let distFiles = [];
+  let indexContent = '';
+  
   if (distExists) {
     distFiles = fs.readdirSync(dPath);
+    const indexPath = path.join(dPath, 'index.html');
+    if (fs.existsSync(indexPath)) {
+      indexContent = fs.readFileSync(indexPath, 'utf8').substring(0, 200);
+    }
   }
 
   res.json({
@@ -261,6 +267,7 @@ app.get('/api/debug', (req, res) => {
     distPath: dPath,
     distExists,
     distFiles,
+    indexContent,
     rootFiles
   });
 });
