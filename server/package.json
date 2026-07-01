@@ -1,0 +1,18 @@
+{
+  "name": "boardverse-server",
+  "version": "1.0.0",
+  "description": "BoardVerse Backend Node.js + Express + Socket.io Server",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "socket.io": "^4.8.1",
+    "sqlite3": "^5.1.7"
+  }
+}

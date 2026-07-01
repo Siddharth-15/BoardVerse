@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BoardVerse — Collaborative AR Whiteboard</title>
+    <!-- Icons from Lucide Icons via CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+  </head>
+  <body>
+    <!-- Background visual decorations -->
+    <div class="glow-orb orb-1"></div>
+    <div class="glow-orb orb-2"></div>
+
+    <!-- Notification system toast logs -->
+    <div id="toast-container"></div>
+
+    <!-- Application wrapper -->
+    <div id="app">
+      
+      <!-- 1. AUTHENTICATION VIEW (Login / Register Card) -->
+      <section id="view-auth" class="view-section auth-view active">
+        <div class="glass-container auth-card">
+          <div class="logo-container">
+            <h1>BoardVerse</h1>
+            <p>Immersive Collaborative Whiteboard</p>
+          </div>
+          
+          <form id="auth-form" onsubmit="return false;">
+            <div class="form-group">
+              <label for="auth-username">Username</label>
+              <input type="text" id="auth-username" class="input-field" placeholder="Enter username" required autocomplete="off" />
+            </div>
+            
+            <div class="form-group">
+              <label for="auth-password">Password</label>
+              <input type="password" id="auth-password" class="input-field" placeholder="Enter password" required />
+            </div>
+
+            <button type="submit" id="btn-auth-submit" class="btn-primary">Sign In</button>
+          </form>
+
+          <button id="btn-guest-login" class="btn-secondary">Join as Guest</button>
+          
+          <div class="auth-toggle-link">
+            <span id="auth-toggle-text">Don't have an account?</span> 
+            <a href="#" id="link-toggle-auth">Register</a>
+          </div>
+
+          <div class="divider">Configuration</div>
+          
+          <!-- Quick settings toggle -->
+          <button id="btn-open-settings" class="btn-secondary" style="margin-top: 0; padding: 0.5rem; font-size: 0.85rem;">
+            <i data-lucide="settings" style="width: 14px; height: 14px; display: inline; vertical-align: middle; margin-right: 6px;"></i>
+            Server Settings
+          </button>
+        </div>
+      </section>
+
+      <!-- 2. DASHBOARD VIEW (Create / Join Rooms Panel) -->
+      <section id="view-dashboard" class="view-section dashboard-view">
+        <!-- Dashboard header bar -->
+        <header class="dashboard-header">
+          <div class="user-profile-widget">
+            <div class="avatar" id="user-avatar">?</div>
+            <div class="user-details">
+              <h2 id="user-display-name">Welcome User</h2>
+              <span id="user-status-role">Registered Account</span>
+            </div>
+          </div>
+          
+          <div style="display: flex; gap: 10px;">
+            <button id="btn-dash-settings" class="btn-icon" title="Server settings">
+              <i data-lucide="settings"></i>
+            </button>
+            <button id="btn-logout" class="btn-icon" title="Sign out" style="border-color: var(--accent-rose-glow);">
+              <i data-lucide="log-out" style="color: var(--accent-rose);"></i>
+            </button>
+          </div>
+        </header>
+
+        <!-- Dashboard body grid layout -->
+        <div class="dashboard-grid">
+          
+          <!-- Left side widgets: creation triggers -->
+          <div class="dashboard-panel-left">
+            <!-- Create Session Card -->
+            <div class="glass-container panel-card">
+              <div>
+                <h3>Create New Room</h3>
+                <p>Create a live collaborative drawing board and invite viewers using a code.</p>
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label for="create-room-name">Whiteboard Name</label>
+                <input type="text" id="create-room-name" class="input-field" placeholder="e.g. Design Review" autocomplete="off" />
+              </div>
+              <button id="btn-create-session" class="btn-primary" style="margin-top: 0;">Host Session</button>
+            </div>
+
+            <!-- Join Session Card -->
+            <div class="glass-container panel-card">
+              <div>
+                <h3>Join Session</h3>
+                <p>Enter a 6-character room code to observe and draw together.</p>
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label for="join-room-code">Session Invite Code</label>
+                <input type="text" id="join-room-code" class="input-field" placeholder="e.g. AB49XY" maxlength="6" style="text-transform: uppercase; font-family: monospace; font-weight: bold; letter-spacing: 0.2em; text-align: center;" />
+              </div>
+              <button id="btn-join-session" class="btn-primary" style="margin-top: 0; background: linear-gradient(135deg, var(--accent-cyan) 0%, #0891b2 100%); box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3);">Join Room</button>
+            </div>
+          </div>
+
+          <!-- Right side widgets: session lists -->
+          <div class="glass-container panel-card dashboard-panel-right">
+            <div class="sessions-section-header">
+              <h3>Session History</h3>
+              <div class="sessions-tabs">
+                <button id="tab-hosted-sessions" class="tab-btn active">My Boards</button>
+                <button id="tab-joined-sessions" class="tab-btn">Joined Boards</button>
+              </div>
+            </div>
+            
+            <div class="sessions-list-container">
+              <div class="sessions-list" id="sessions-history-list">
+                <!-- Rendered dynamically -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. COLLABORATION BOARD VIEW -->
+      <section id="view-room" class="view-section room-view">
+        <!-- Floating header HUD -->
+        <div class="room-header">
+          <div class="glass-container room-meta-card">
+            <button id="btn-leave-room" class="btn-icon" title="Return to Dashboard">
+              <i data-lucide="arrow-left"></i>
+            </button>
+            <div class="room-title-section">
+              <h2 class="room-title" id="room-session-name">Whiteboard Room</h2>
+              <span class="room-subtitle" id="room-host-indicator">Host: Siddharth</span>
+            </div>
+            <button id="btn-edit-session-details" class="btn-icon" style="width: 36px; height: 36px; border-radius: 8px; margin-left: 4px; display: none;" title="Edit Session Details (Host Only)">
+              <i data-lucide="edit-3" style="width: 16px; height: 16px;"></i>
+            </button>
+            <div class="room-code-tag" id="room-invite-tag" title="Click to copy invite code">
+              CODE: ------
+            </div>
+
+            <!-- Sleek active members dropdown selector -->
+            <div style="position: relative;">
+              <button id="btn-active-members-toggle" class="btn-secondary" style="margin-left: 8px; height: 36px; padding: 0 12px; font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; gap: 6px; border-radius: 8px;" title="View Active Members">
+                <i data-lucide="users" style="width: 14px; height: 14px; color: var(--accent-cyan);"></i>
+                <span>Members (<span id="active-members-count">0</span>)</span>
+              </button>
+
+              <!-- Active Members Dropdown Panel -->
+              <div class="glass-container active-members-dropdown" id="active-members-dropdown" style="display: none; position: absolute; top: 45px; right: 0; z-index: 1005; min-width: 210px; padding: 12px; border-radius: 12px; box-shadow: var(--shadow-glow);">
+                <div class="panel-header-small" style="border-bottom: 1px solid var(--glass-border); padding-bottom: 6px; margin-bottom: 8px;">Active Members</div>
+                <div class="member-list" id="room-active-members-list" style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+                  <!-- Active users list -->
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="room-actions">
+            <!-- Save and exit or collaborative toggles can go here -->
+          </div>
+        </div>
+
+        <!-- 2D Canvas workspace wrapper -->
+        <div class="canvas-wrapper" id="whiteboard-wrapper">
+          <canvas id="whiteboard"></canvas>
+          <div id="cursors-overlay" style="position: absolute; top:0; left:0; width:100%; height:100%; pointer-events: none;">
+            <!-- Floating pointers injected here -->
+          </div>
+          <!-- Text Tool input overlay -->
+          <div id="text-input-overlay" style="position: absolute; display: none; z-index: 1001; pointer-events: auto;">
+            <input type="text" id="canvas-text-input" placeholder="Type text & press Enter" class="input-field" style="background: rgba(13, 12, 28, 0.95); border-color: var(--accent-purple); box-shadow: var(--shadow-glow); min-width: 180px; padding: 6px 12px; font-size: 0.9rem;" />
+          </div>
+        </div>
+
+        <!-- Floating Image Layer Manager panel -->
+        <div class="glass-container active-users-panel" id="images-panel" style="top: 140px; display: none; max-height: 220px; overflow-y: auto;">
+          <div class="panel-header-small">Canvas Images</div>
+          <div class="member-list" id="room-active-images">
+            <!-- Dynamic list of images on canvas with delete icons -->
+          </div>
+        </div>
+
+        <!-- Floating draw toolbar -->
+        <div class="glass-container toolbar-container">
+          <!-- Brush tools -->
+          <div class="tool-group">
+            <button id="tool-pencil" class="tool-btn active" title="Pencil Tool">
+              <i data-lucide="pencil"></i>
+            </button>
+            <button id="tool-text" class="tool-btn" title="Text Tool">
+              <i data-lucide="type"></i>
+            </button>
+            <button id="tool-image" class="tool-btn" title="Upload Image">
+              <i data-lucide="image"></i>
+            </button>
+            <button id="tool-eraser" class="tool-btn" title="Eraser Tool">
+              <i data-lucide="eraser"></i>
+            </button>
+            <!-- Hidden file input for uploading images -->
+            <input type="file" id="image-upload-input" accept="image/*" style="display:none;" />
+          </div>
+
+          <div class="divider-vertical"></div>
+
+          <!-- Color Swatches -->
+          <div class="tool-group" id="color-palette">
+            <div class="color-picker-btn selected" data-color="#ffffff" style="background-color: #ffffff;"></div>
+            <div class="color-picker-btn" data-color="#8b5cf6" style="background-color: #8b5cf6;"></div>
+            <div class="color-picker-btn" data-color="#06b6d4" style="background-color: #06b6d4;"></div>
+            <div class="color-picker-btn" data-color="#f43f5e" style="background-color: #f43f5e;"></div>
+            <div class="color-picker-btn" data-color="#eab308" style="background-color: #eab308;"></div>
+          </div>
+
+          <div class="divider-vertical"></div>
+
+          <!-- Stroke Thickness Slider -->
+          <div class="brush-slider-container">
+            <i data-lucide="brush" style="width: 14px; height: 14px;"></i>
+            <input type="range" id="brush-size" min="2" max="40" value="5" />
+            <span id="brush-size-val">5px</span>
+          </div>
+
+          <div class="divider-vertical text-tool-only" style="display: none;"></div>
+
+          <!-- Text Typography controls (Visible only when text tool is active) -->
+          <div class="tool-group text-tool-only" style="display: none; align-items: center; gap: 8px;">
+            <select id="font-style-select" class="input-field" style="height: 36px; padding: 0 10px; width: 130px; font-size: 0.8rem; background: rgba(255, 255, 255, 0.05); border-color: var(--glass-border); border-radius: 8px;">
+              <option value="Outfit" style="background:#0d0d15;">Outfit (Sans)</option>
+              <option value="Playfair Display" style="background:#0d0d15;">Playfair (Serif)</option>
+              <option value="Fira Code" style="background:#0d0d15;">Fira (Code)</option>
+              <option value="Caveat" style="background:#0d0d15;">Caveat (Script)</option>
+            </select>
+            
+            <select id="font-size-select" class="input-field" style="height: 36px; padding: 0 10px; width: 75px; font-size: 0.8rem; background: rgba(255, 255, 255, 0.05); border-color: var(--glass-border); border-radius: 8px;">
+              <option value="16" style="background:#0d0d15;">16px</option>
+              <option value="20" style="background:#0d0d15;">20px</option>
+              <option value="24" style="background:#0d0d15;">24px</option>
+              <option value="32" selected style="background:#0d0d15;">32px</option>
+              <option value="48" style="background:#0d0d15;">48px</option>
+              <option value="64" style="background:#0d0d15;">64px</option>
+            </select>
+          </div>
+
+          <div class="divider-vertical"></div>
+
+          <!-- Actions -->
+          <div class="tool-group">
+            <button id="btn-clear-board" class="tool-btn" title="Clear whiteboard (Host only)" style="color: var(--accent-rose);">
+              <i data-lucide="trash-2"></i>
+            </button>
+            <button id="btn-enter-ar" class="tool-btn" title="Enable AR View Mode" style="color: var(--accent-cyan); font-weight: 700;">
+              <i data-lucide="camera"></i>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. AUGMENTED REALITY (AR) CAMERA SIMULATOR VIEW -->
+      <section id="view-ar" class="view-section ar-view">
+        <!-- Live rear video stream layer -->
+        <video id="ar-video" autoplay playsinline muted></video>
+        
+        <!-- Three.js Canvas Layer -->
+        <canvas id="ar-canvas"></canvas>
+
+        <!-- Dynamic AR UI HUD overlays -->
+        <div class="ar-overlay-ui">
+          
+          <header class="ar-header">
+            <button id="btn-exit-ar" class="btn-icon" title="Return to canvas mode" style="pointer-events: auto;">
+              <i data-lucide="arrow-left"></i>
+            </button>
+            <h2>AR Workspace</h2>
+            <div style="width:44px;"></div> <!-- Spacer -->
+          </header>
+
+          <div class="ar-hint-card" id="ar-helper-toast">
+            Drag on screen to place. Pinch to scale.
+          </div>
+
+          <!-- Position adjustments -->
+          <div class="glass-container ar-control-panel">
+            <div class="ar-slider-group">
+              <div class="ar-slider-label">
+                <span>Rotation (Y-Axis)</span>
+                <span id="ar-rot-val">0°</span>
+              </div>
+              <input type="range" id="ar-slider-rotate" class="ar-slider" min="0" max="360" value="0" />
+            </div>
+
+            <div class="ar-slider-group">
+              <div class="ar-slider-label">
+                <span>Scale / Dimensions</span>
+                <span id="ar-scale-val">100%</span>
+              </div>
+              <input type="range" id="ar-slider-scale" class="ar-slider" min="10" max="300" value="100" />
+            </div>
+
+            <div class="ar-slider-group">
+              <div class="ar-slider-label">
+                <span>Depth distance</span>
+                <span id="ar-depth-val">1.5m</span>
+              </div>
+              <input type="range" id="ar-slider-depth" class="ar-slider" min="5" max="50" value="15" />
+            </div>
+
+            <div class="ar-actions-row">
+              <button id="btn-ar-reset" class="ar-btn">Reset</button>
+              <button id="btn-ar-gyro" class="ar-btn">
+                <i data-lucide="compass" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 6px;"></i>
+                Gyro Lock
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+
+    <!-- 5. CONNECTION CONFIG MODAL -->
+    <div class="modal-backdrop" id="modal-settings">
+      <div class="glass-container modal-card">
+        <div class="modal-header">
+          <h3>Server Settings</h3>
+          <button id="btn-close-settings" class="btn-icon" style="width: 32px; height: 32px; border-radius: 8px;">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        
+        <div class="form-group">
+          <label for="settings-server-url">Backend Server URL</label>
+          <input type="url" id="settings-server-url" class="input-field" placeholder="http://localhost:3000" value="http://localhost:3000" />
+          <span style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 6px;">
+            Input your local Node server address (e.g. http://localhost:3000) or your Render.com hosted web service address.
+          </span>
+        </div>
+
+        <button id="btn-save-settings" class="btn-primary">Save Configuration</button>
+      </div>
+    </div>
+
+    <!-- 6. HOST SESSION DETAILS MODAL -->
+    <div class="modal-backdrop" id="modal-session-details">
+      <div class="glass-container modal-card">
+        <div class="modal-header">
+          <h3>Session Summary & Details</h3>
+          <button id="btn-close-session-details" class="btn-icon" style="width: 32px; height: 32px; border-radius: 8px;">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        
+        <div class="form-group">
+          <label for="edit-session-name">Whiteboard Topic / Title</label>
+          <input type="text" id="edit-session-name" class="input-field" required />
+        </div>
+
+        <div class="form-group">
+          <label for="edit-session-topic">Agenda / Session Details</label>
+          <textarea id="edit-session-topic" class="input-field" placeholder="Describe the topic of this collaboration session..." style="min-height: 100px; resize: vertical; font-family: inherit;"></textarea>
+        </div>
+
+        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 8px; padding: 4px;">
+          <div style="display: flex; justify-content: space-between;">
+            <span>Total members ever joined:</span>
+            <strong id="val-member-count" style="color: var(--accent-cyan);">0</strong>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span>Session created:</span>
+            <strong id="val-created-at">--</strong>
+          </div>
+        </div>
+
+        <button id="btn-save-session-details" class="btn-primary">Save Session details</button>
+      </div>
+    </div>
+
+    <!-- Frontend Entry Script -->
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
