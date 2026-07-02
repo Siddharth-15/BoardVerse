@@ -1,6 +1,8 @@
 import { io } from 'socket.io-client';
 import { getServerUrl } from './api';
 
+let socket = null;   
+
 let lastSessionId = null;
 let lastUserId = null;
 let lastUsername = null;
