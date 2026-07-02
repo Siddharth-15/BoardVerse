@@ -1,7 +1,10 @@
 import { io } from 'socket.io-client';
 import { getServerUrl } from './api';
 
-let socket = null;
+let lastSessionId = null;
+let lastUserId = null;
+let lastUsername = null;
+let reconnectHandler = null;
 
 export function getSocket() {
   return socket;
@@ -16,12 +19,32 @@ export function connectSocket() {
   socket = io(serverUrl, {
     autoConnect: true,
     reconnection: true,
-    reconnectionAttempts: 5,
-    reconnectionDelay: 1000
+    reconnectionAttempts: Infinity,
+    reconnectionDelay: 2000,
+    timeout: 20000,
+    transports: ['websocket', 'polling']
   });
 
   socket.on('connect', () => {
-    console.log('Socket connection established, ID:', socket.id);
+    console.log('[SOCKET] CONNECTED, ID:', socket.id);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('[SOCKET] DISCONNECTED');
+  });
+
+  socket.on('reconnect', (attempt) => {
+    console.log('[SOCKET] RECONNECTED after ' + attempt + ' attempts');
+    if (lastSessionId && lastUserId && lastUsername) {
+      socket.emit('join-room', { 
+        sessionId: lastSessionId, 
+        userId: lastUserId, 
+        username: lastUsername 
+      });
+      if (reconnectHandler) {
+        reconnectHandler();
+      }
+    }
   });
 
   socket.on('connect_error', (error) => {
@@ -35,12 +58,19 @@ export function disconnectSocket() {
   if (socket) {
     socket.disconnect();
     socket = null;
-    console.log('Socket disconnected');
+    console.log('[SOCKET] DISCONNECTED (Manual)');
   }
+}
+
+export function onReconnect(callback) {
+  reconnectHandler = callback;
 }
 
 // Emits
 export function joinRoom(sessionId, userId, username) {
+  lastSessionId = sessionId;
+  lastUserId = userId;
+  lastUsername = username;
   if (!socket) connectSocket();
   socket.emit('join-room', { sessionId, userId, username });
 }

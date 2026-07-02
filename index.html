@@ -386,6 +386,18 @@
       </div>
     </div>
 
+    <!-- Backend Readiness Health-Check Overlay -->
+    <div id="health-overlay" class="health-overlay active">
+      <div class="health-card">
+        <div class="spinner"></div>
+        <h2 id="health-status-text">Connecting to backend service...</h2>
+        <p id="health-attempt-text">Attempt 1 of 8</p>
+        <button id="btn-health-retry" class="btn-primary" style="display: none; margin-top: 16px; margin-left: auto; margin-right: auto; gap: 8px;">
+          <i data-lucide="refresh-cw"></i> Retry Connection
+        </button>
+      </div>
+    </div>
+
     <!-- Frontend Entry Script -->
     <script type="module" src="/src/main.js"></script>
   </body>

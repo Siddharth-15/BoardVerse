@@ -1,16 +1,5 @@
-// Default server URL. Can be overwritten in UI Settings and saved in localStorage.
-const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-let BASE_URL = localStorage.getItem('boardverse_server_url');
-
-if (!BASE_URL) {
-  // If running local dev server (Vite on port 5173), point to backend at 3000
-  if (isLocal && window.location.port === '5173') {
-    BASE_URL = 'http://localhost:3000';
-  } else {
-    // In production (same origin) or local preview
-    BASE_URL = window.location.origin;
-  }
-}
+// Default server URL. Loaded from environment variables (Vite dotenv system).
+let BASE_URL = localStorage.getItem('boardverse_server_url') || import.meta.env.VITE_API_URL;
 
 export function getServerUrl() {
   return BASE_URL;

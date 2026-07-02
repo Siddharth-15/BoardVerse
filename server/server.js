@@ -1,26 +1,82 @@
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
+const helmet = require('helmet');
+const compression = require('compression');
+const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { dbRun, dbGet, dbAll } = require('./database');
 
+// Ensure required environment variables exist
+const JWT_SECRET = process.env.JWT_SECRET;
+const CLIENT_URL = process.env.CLIENT_URL;
+const PORT = process.env.PORT || 3000;
+
+if (!JWT_SECRET) {
+  console.error('FATAL ERROR: JWT_SECRET environment variable is missing.');
+  process.exit(1);
+}
+if (!CLIENT_URL) {
+  console.error('FATAL ERROR: CLIENT_URL environment variable is missing.');
+  process.exit(1);
+}
+
 const app = express();
 const server = http.createServer(app);
+
+// Dynamic CORS allowed origins checking
+const allowedOrigins = [
+  CLIENT_URL,
+  'http://localhost:5173'
+];
+
+const socketCorsOrigin = (origin, callback) => {
+  if (!origin) return callback(null, true);
+  const isAllowed = allowedOrigins.includes(origin);
+  const isVercelPreview = origin.startsWith('https://board-verse-') && origin.endsWith('.vercel.app');
+  
+  if (isAllowed || isVercelPreview) {
+    callback(null, true);
+  } else {
+    callback(new Error('Not allowed by CORS'));
+  }
+};
+
 const io = socketIo(server, {
   cors: {
-    origin: '*', // Allows connections from anywhere (development setup)
-    methods: ['GET', 'POST']
-  }
+    origin: socketCorsOrigin,
+    methods: ['GET', 'POST'],
+    credentials: true
+  },
+  transports: ['websocket', 'polling']
 });
 
-const PORT = process.env.PORT || 3000;
-const JWT_SECRET = 'BOARDVERSE_SUPER_SECRET_KEY_2026_VITE_V2';
-
-// Middleware
-app.use(cors());
+// Security & Optimization Middlewares
+app.use(helmet());
+app.use(compression());
 app.use(express.json());
+
+// Scoped Rate Limiter (Auth & Session APIs only)
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests from this IP, please try again after 15 minutes.' }
+});
+
+// Configure CORS for Express
+app.use(cors({
+  origin: socketCorsOrigin,
+  credentials: true
+}));
+
+// Apply Rate Limiter to Auth and Session endpoints only (excluding health/sockets/static/uploads)
+app.use('/api/auth', apiLimiter);
+app.use('/api/sessions', apiLimiter);
 
 // Helper: Generate Unique Session ID (6 capital letters/numbers)
 function generateSessionId() {
@@ -243,34 +299,7 @@ app.put('/api/sessions/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Diagnostics endpoint to debug directory layouts in production
-app.get('/api/debug', (req, res) => {
-  const fs = require('fs');
-  const path = require('path');
-  const dPath = path.join(__dirname, '../dist');
-  
-  const rootFiles = fs.readdirSync(path.join(__dirname, '..'));
-  let distExists = fs.existsSync(dPath);
-  let distFiles = [];
-  let indexContent = '';
-  
-  if (distExists) {
-    distFiles = fs.readdirSync(dPath);
-    const indexPath = path.join(dPath, 'index.html');
-    if (fs.existsSync(indexPath)) {
-      indexContent = fs.readFileSync(indexPath, 'utf8').substring(0, 200);
-    }
-  }
 
-  res.json({
-    dirname: __dirname,
-    distPath: dPath,
-    distExists,
-    distFiles,
-    indexContent,
-    rootFiles
-  });
-});
 
 // --- SOCKET.IO REALTIME EVENTS ---
 
@@ -445,19 +474,9 @@ io.on('connection', (socket) => {
   });
 });
 
-// Serve production Vite build statically
-const path = require('path');
-const distPath = path.join(__dirname, '../dist');
-app.use(express.static(distPath));
-
-// SPA fallback routing
-app.get('*', (req, res, next) => {
-  if (req.path.startsWith('/api')) return next();
-  res.sendFile(path.join(distPath, 'index.html'), (err) => {
-    if (err) {
-      res.status(200).send('BoardVerse API Server is active.');
-    }
-  });
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
 });
 
 // Start Server

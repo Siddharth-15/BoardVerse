@@ -20,14 +20,79 @@ function parseUTCDate(dateStr) {
   return new Date(formatted);
 }
 
+// Handle backend health verification (handling Render cold start)
+async function performHealthCheck() {
+  const overlay = document.getElementById('health-overlay');
+  if (!overlay) return;
+
+  const statusText = document.getElementById('health-status-text');
+  const attemptText = document.getElementById('health-attempt-text');
+  const retryBtn = document.getElementById('btn-health-retry');
+  const spinner = overlay.querySelector('.spinner');
+
+  const maxRetries = 8;
+  const retryDelay = 5000;
+  const serverUrl = api.getServerUrl();
+
+  overlay.classList.add('active');
+  retryBtn.style.display = 'none';
+  if (spinner) spinner.style.display = 'block';
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    statusText.textContent = 'Connecting to backend service...';
+    attemptText.textContent = `Attempt ${attempt} of ${maxRetries} (Render cold starts can take up to 40 seconds)`;
+    console.log(`[HEALTH] Pinging backend at ${serverUrl}/health, attempt ${attempt}/${maxRetries}`);
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      const response = await fetch(`${serverUrl}/health`, {
+        signal: controller.signal,
+        mode: 'cors'
+      });
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.status === 'ok') {
+          console.log('[HEALTH] Backend is ready!');
+          overlay.classList.remove('active');
+          checkAuthState();
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn(`[HEALTH] Attempt ${attempt} failed:`, err.message);
+    }
+
+    if (attempt < maxRetries) {
+      await new Promise(resolve => setTimeout(resolve, retryDelay));
+    }
+  }
+
+  // If we reach here, all retries failed
+  console.error('[HEALTH] Backend unreachable after 8 attempts.');
+  statusText.textContent = 'Backend server connection failed';
+  attemptText.textContent = 'The server is currently unreachable. Click retry to attempt connecting again.';
+  if (spinner) spinner.style.display = 'none';
+  retryBtn.style.display = 'block';
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   // Initialize Lucide Icons
   if (window.lucide) {
     window.lucide.createIcons();
   }
 
-  // Check login states
-  checkAuthState();
+  // Bind health retry button
+  const retryBtn = document.getElementById('btn-health-retry');
+  if (retryBtn) {
+    retryBtn.addEventListener('click', performHealthCheck);
+  }
+
+  // Run backend health check before entering app views
+  performHealthCheck();
 
   // Setup DOM Listeners
   setupAuthListeners();
@@ -436,13 +501,67 @@ async function enterRoom(sessionId) {
     // 3. Establish Real-Time Socket Connection
     const socket = socketService.connectSocket();
     
-    // Listen to Connection
+    // Connection stability UI overlays
+    const healthOverlay = document.getElementById('health-overlay');
+    const healthStatusText = document.getElementById('health-status-text');
+    const healthAttemptText = document.getElementById('health-attempt-text');
+    const healthRetryBtn = document.getElementById('btn-health-retry');
+    const healthSpinner = healthOverlay ? healthOverlay.querySelector('.spinner') : null;
+
+    socket.off('disconnect'); // Clean up existing listeners to avoid duplicates
+    socket.off('connect_error');
+    socket.off('connect');
+
+    socket.on('disconnect', (reason) => {
+      console.warn('[SOCKET] DISCONNECTED:', reason);
+      if (healthOverlay) {
+        healthStatusText.textContent = 'Server connection lost. Reconnecting...';
+        healthAttemptText.textContent = 'Verifying server status. Please wait...';
+        if (healthSpinner) healthSpinner.style.display = 'block';
+        if (healthRetryBtn) healthRetryBtn.style.display = 'none';
+        healthOverlay.classList.add('active');
+      }
+    });
+
+    socket.on('connect_error', (error) => {
+      console.warn('[SOCKET] CONNECTION ERROR:', error.message);
+      if (healthOverlay) {
+        healthStatusText.textContent = 'Server connection failed';
+        healthAttemptText.textContent = 'Attempting automatic recovery...';
+        if (healthSpinner) healthSpinner.style.display = 'block';
+        if (healthRetryBtn) healthRetryBtn.style.display = 'none';
+        healthOverlay.classList.add('active');
+      }
+    });
+
     socket.on('connect', () => {
+      console.log('[SOCKET] CONNECTED successfully!');
+      if (healthOverlay) healthOverlay.classList.remove('active');
       socketService.joinRoom(sessionId, user.userId, user.username);
     });
-    
+
+    // Reconnect State Recovery Sync
+    socketService.onReconnect(async () => {
+      console.log('[SOCKET] RECONNECTED. Restoring session state...');
+      showToast('Connection restored! Re-syncing board state...', 'success');
+      if (healthOverlay) healthOverlay.classList.remove('active');
+
+      try {
+        // Fetch fresh database stroke history
+        const sessionData = await api.getSession(sessionId);
+        
+        // Re-load stroke history & redraw the board (syncStrokeHistory)
+        loadStrokeHistory(sessionData.strokes || []);
+        console.log('[SOCKET] SYNCED session state successfully.');
+      } catch (err) {
+        console.error('[SOCKET] Re-sync failed:', err);
+        showToast('Failed to sync canvas state on reconnect', 'error');
+      }
+    });
+
     // If socket is already connected, join immediately
     if (socket.connected) {
+      if (healthOverlay) healthOverlay.classList.remove('active');
       socketService.joinRoom(sessionId, user.userId, user.username);
     }
 
