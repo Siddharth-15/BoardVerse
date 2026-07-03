@@ -6,7 +6,10 @@ const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
     console.error('Error opening SQLite database:', err);
   } else {
-    console.log('Connected to SQLite database at:', dbPath);
+    console.log('==============================');
+    console.log('Database path:', dbPath);
+    console.log('Database object:', db);
+    console.log('==============================');
     initSchema();
   }
 });
