@@ -115,10 +115,11 @@ app.post('/api/auth/register', async (req, res) => {
   try {
     const hashedPassword = bcrypt.hashSync(password, 10);
     const result = await dbRun(
-      console.log("REGISTER RESULT:", result);
       'INSERT INTO users (username, password) VALUES (?, ?)',
       [username.trim(), hashedPassword]
     );
+
+    console.log("REGISTER RESULT:", result);
     
     const token = jwt.sign({ userId: result.id, username: username.trim() }, JWT_SECRET, { expiresIn: '7d' });
     res.status(201).json({ token, username: username.trim() });
