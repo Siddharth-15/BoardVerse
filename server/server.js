@@ -201,6 +201,12 @@ app.post('/api/sessions/create', authenticateToken, async (req, res) => {
       [sessionId, name.trim(), req.user.userId]
     );
 
+    console.log('==============================');
+    console.log('Session created successfully');
+    console.log('Session ID:', sessionId);
+    console.log('Host ID:', req.user.userId);
+    console.log('==============================');
+
     res.status(201).json({ id: sessionId, name: name.trim(), hostId: req.user.userId });
   } catch (error) {
     console.error(error);
@@ -224,12 +230,15 @@ app.get('/api/sessions/my', authenticateToken, async (req, res) => {
 // Get Specific Session Data (Checking presence, returns history details)
 app.get('/api/sessions/:id', async (req, res) => {
   const sessionId = req.params.id.toUpperCase();
+  console.log('Looking for session:', sessionId);
 
   try {
     const session = await dbGet(
+      
       'SELECT s.*, u.username as host_name FROM sessions s JOIN users u ON s.host_id = u.id WHERE s.id = ?',
       [sessionId]
     );
+    console.log('Database returned:', session);
 
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
