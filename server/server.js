@@ -115,6 +115,7 @@ app.post('/api/auth/register', async (req, res) => {
   try {
     const hashedPassword = bcrypt.hashSync(password, 10);
     const result = await dbRun(
+      console.log("REGISTER RESULT:", result);
       'INSERT INTO users (username, password) VALUES (?, ?)',
       [username.trim(), hashedPassword]
     );
@@ -141,6 +142,7 @@ app.post('/api/auth/login', async (req, res) => {
 
   try {
     const user = await dbGet('SELECT * FROM users WHERE username = ?', [username.trim()]);
+    console.log("LOGIN USER:", user);
     if (!user || !bcrypt.compareSync(password, user.password)) {
       return res.status(400).json({ error: 'Invalid username or password' });
     }
@@ -172,6 +174,7 @@ app.post('/api/auth/guest', (req, res) => {
 // Get Current User Profile
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
   try {
+    console.log("Token user:", req.user);
     const user = await dbGet('SELECT id, username, created_at FROM users WHERE id = ?', [req.user.userId]);
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json(user);
