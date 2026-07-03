@@ -80,28 +80,59 @@ function initSchema() {
 
 // Promise wrappers for clean async/await code
 const dbRun = (sql, params = []) => {
+  console.log("\nRUN");
+  console.log(sql);
+  console.log(params);
+
   return new Promise((resolve, reject) => {
     db.run(sql, params, function (err) {
-      if (err) reject(err);
-      else resolve({ id: this.lastID, changes: this.changes });
+      if (err) {
+        console.log(err);
+        reject(err);
+      } else {
+        console.log("changes:", this.changes);
+        console.log("lastID:", this.lastID);
+        resolve({
+          id: this.lastID,
+          changes: this.changes
+        });
+      }
     });
   });
 };
 
 const dbGet = (sql, params = []) => {
+  console.log("\nGET");
+  console.log(sql);
+  console.log(params);
+
   return new Promise((resolve, reject) => {
     db.get(sql, params, (err, row) => {
-      if (err) reject(err);
-      else resolve(row);
+      if (err) {
+        console.log(err);
+        reject(err);
+      } else {
+        console.log("ROW:", row);
+        resolve(row);
+      }
     });
   });
 };
 
 const dbAll = (sql, params = []) => {
+  console.log("\nALL");
+  console.log(sql);
+  console.log(params);
+
   return new Promise((resolve, reject) => {
     db.all(sql, params, (err, rows) => {
-      if (err) reject(err);
-      else resolve(rows);
+      if (err) {
+        console.log(err);
+        reject(err);
+      } else {
+        console.log("ROWS:", rows.length);
+        resolve(rows);
+      }
     });
   });
 };
