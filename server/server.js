@@ -389,6 +389,13 @@ io.on('connection', (socket) => {
   // 2. Real-time stroke transmission (broadcasting coordinate queues)
   socket.on('draw-stroke', ({ sessionId, point, color, width, tool, isNewPath }) => {
     const sId = sessionId.toUpperCase();
+    console.log(
+      "[SERVER] draw-stroke",
+      sId,
+      socket.roomUserId,
+      point
+    );
+    
     socket.to(sId).emit('draw-stroke', { point, color, width, tool, isNewPath, userId: socket.roomUserId });
   });
 
