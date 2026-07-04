@@ -105,7 +105,10 @@ export function emitClearCanvas(sessionId) {
 export function onDrawStroke(callback) {
   if (!socket) return;
   socket.off('draw-stroke'); // Clean up existing listener
-  socket.on('draw-stroke', callback);
+  socket.on('draw-stroke', (data) => {
+    console.log("[CLIENT] received draw-stroke", data);
+    callback(data);
+  });
 }
 
 export function onEndStroke(callback) {
