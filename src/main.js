@@ -454,9 +454,27 @@ async function enterRoom(sessionId) {
     }
 
     // 2. Set up Socket listeners FIRST to prevent race conditions
-    socketService.onDrawStroke(({ point, color, width, tool, isNewPath, userId }) => {
-      handleRemoteDrawPoint({ userId, point, color, width, tool, isNewPath });
+  socketService.onDrawStroke((data) => {
+    console.log("[MAIN] draw packet", data);
+    
+    const {
+        point,
+        color,
+        width,
+        tool,
+        isNewPath,
+        userId
+    } = data;
+  
+    handleRemoteDrawPoint({
+        userId,
+        point,
+        color,
+        width,
+        tool,
+        isNewPath
     });
+  });
 
     socketService.onEndStroke(({ userId }) => {
       handleRemoteEndStroke({ userId });
